@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Printer, ChevronDown, ChevronUp } from "lucide-react";
 import { PrinterForm } from "@/components/printer-form";
-import { StatsSummary } from "@/components/stats-summary";
 import { PrinterTable } from "@/components/printer-table";
 import { Button } from "@/components/ui/button";
 
@@ -28,9 +27,6 @@ export default function Home() {
       </div>
 
       <main className="max-w-4xl mx-auto px-4 py-4 sm:py-6 space-y-4">
-        {/* Stats always visible */}
-        <StatsSummary />
-
         {/* On mobile: collapsible form toggle */}
         <div className="lg:hidden">
           <Button

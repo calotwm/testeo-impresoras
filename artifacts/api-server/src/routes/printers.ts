@@ -7,6 +7,9 @@ import {
   CreatePrinterResponse,
   GetPrinterStatsResponse,
   DeletePrinterParams,
+  UpdatePrinterBody,
+  UpdatePrinterParams,
+  UpdatePrinterResponse,
 } from "@workspace/api-zod";
 import { broadcast } from "../lib/ws";
 
@@ -55,6 +58,35 @@ router.post("/printers", async (req, res): Promise<void> => {
 
   broadcast({ type: "created", id: record.id });
   res.status(201).json(CreatePrinterResponse.parse(serialize(record)));
+});
+
+router.put("/printers/:id", async (req, res): Promise<void> => {
+  const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const paramsParsed = UpdatePrinterParams.safeParse({ id: rawId });
+  if (!paramsParsed.success) {
+    res.status(400).json({ error: paramsParsed.error.message });
+    return;
+  }
+
+  const bodyParsed = UpdatePrinterBody.safeParse(req.body);
+  if (!bodyParsed.success) {
+    res.status(400).json({ error: bodyParsed.error.message });
+    return;
+  }
+
+  const [updated] = await db
+    .update(printersTable)
+    .set(bodyParsed.data)
+    .where(eq(printersTable.id, paramsParsed.data.id))
+    .returning();
+
+  if (!updated) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+
+  broadcast({ type: "created", id: updated.id });
+  res.json(UpdatePrinterResponse.parse(serialize(updated)));
 });
 
 router.delete("/printers/all", async (_req, res): Promise<void> => {

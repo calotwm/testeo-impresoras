@@ -80,6 +80,31 @@ paths:
                 $ref: "#/components/schemas/PrinterStats"
 
   /printers/{id}:
+    put:
+      operationId: updatePrinter
+      tags: [printers]
+      summary: Update a printer test record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrinterInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Printer"
+        "404":
+          description: Not found
     delete:
       operationId: deletePrinter
       tags: [printers]

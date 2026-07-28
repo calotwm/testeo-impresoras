@@ -78,6 +78,37 @@ export const GetPrinterStatsResponse = zod.object({
 
 
 /**
+ * @summary Update a printer test record
+ */
+export const UpdatePrinterParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+
+export const UpdatePrinterBody = zod.object({
+  "ai": zod.string().min(1),
+  "modelo": zod.string().min(1),
+  "estado": zod.enum(['funciona', 'falla', 'parcial']),
+  "ubicacion": zod.string().optional(),
+  "descripcion": zod.string().optional()
+})
+
+export const UpdatePrinterResponse = zod.object({
+  "id": zod.number(),
+  "ai": zod.string(),
+  "modelo": zod.string(),
+  "estado": zod.enum(['funciona', 'falla', 'parcial']),
+  "ubicacion": zod.string().nullish(),
+  "descripcion": zod.string().nullish(),
+  "fecha": zod.string(),
+  "createdAt": zod.string()
+})
+
+
+/**
  * @summary Delete a printer test record
  */
 export const DeletePrinterParams = zod.object({

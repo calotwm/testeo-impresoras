@@ -1,8 +1,11 @@
 import { useState, useMemo, useRef } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   useListPrinters,
   useDeletePrinter,
   useDeleteAllPrinters,
+  useUpdatePrinter,
   getListPrintersQueryKey,
   getGetPrinterStatsQueryKey,
 } from "@workspace/api-client-react";
@@ -11,7 +14,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { printerFormSchema, type PrinterFormValues } from "@/lib/schemas";
 import {
   Search,
   Download,
@@ -21,6 +35,7 @@ import {
   FileText,
   Calendar,
   Printer,
+  Pencil,
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -75,15 +90,24 @@ export function PrinterTable() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [editingPrinter, setEditingPrinter] = useState<PrinterFormValues & { id: number } | null>(null);
 
   const { data: printers, isLoading } = useListPrinters();
   const deletePrinter = useDeletePrinter();
   const deleteAllPrinters = useDeleteAllPrinters();
+  const updatePrinter = useUpdatePrinter();
 
   const deleteFnRef = useRef(deletePrinter.mutate);
   deleteFnRef.current = deletePrinter.mutate;
   const deleteAllFnRef = useRef(deleteAllPrinters.mutate);
   deleteAllFnRef.current = deleteAllPrinters.mutate;
+
+  const editForm = useForm<PrinterFormValues>({
+    resolver: zodResolver(printerFormSchema),
+    values: editingPrinter
+      ? { ai: editingPrinter.ai, modelo: editingPrinter.modelo, estado: editingPrinter.estado, ubicacion: editingPrinter.ubicacion ?? "", descripcion: editingPrinter.descripcion ?? "" }
+      : undefined,
+  });
 
   const filteredPrinters = useMemo(() => {
     if (!printers) return [];
@@ -102,7 +126,6 @@ export function PrinterTable() {
     deleteFnRef.current({ id }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListPrintersQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getGetPrinterStatsQueryKey() });
         toast({ title: "Registro eliminado" });
       },
     });
@@ -112,9 +135,40 @@ export function PrinterTable() {
     deleteAllFnRef.current(undefined, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListPrintersQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getGetPrinterStatsQueryKey() });
         toast({ title: "Bitácora limpiada", description: "Todos los registros eliminados." });
       },
+    });
+  };
+
+  const handleEdit = (data: PrinterFormValues) => {
+    if (!editingPrinter) return;
+    updatePrinter.mutate(
+      { id: editingPrinter.id, data },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListPrintersQueryKey() });
+          setEditingPrinter(null);
+          toast({ title: "Registro actualizado" });
+        },
+        onError: () => {
+          toast({
+            title: "Error",
+            description: "No se pudo actualizar el registro.",
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
+
+  const openEdit = (printer: NonNullable<typeof printers>[number]) => {
+    setEditingPrinter({
+      id: printer.id,
+      ai: printer.ai,
+      modelo: printer.modelo,
+      estado: printer.estado,
+      ubicacion: printer.ubicacion ?? "",
+      descripcion: printer.descripcion ?? "",
     });
   };
 
@@ -268,23 +322,140 @@ export function PrinterTable() {
                   )}
                 </div>
 
-                {/* Delete — always visible on mobile (no hover needed) */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-                  onClick={() => handleDelete(printer.id)}
-                  disabled={deletePrinter.isPending}
-                  title="Eliminar registro"
-                  data-testid={`button-delete-${printer.id}`}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                {/* Edit + Delete */}
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-primary shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                    onClick={() => openEdit(printer)}
+                    disabled={updatePrinter.isPending}
+                    title="Editar registro"
+                    data-testid={`button-edit-${printer.id}`}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                    onClick={() => handleDelete(printer.id)}
+                    disabled={deletePrinter.isPending}
+                    title="Eliminar registro"
+                    data-testid={`button-delete-${printer.id}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>
         )}
       </CardContent>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editingPrinter} onOpenChange={(o) => { if (!o) { setEditingPrinter(null); editForm.reset(); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Registro</DialogTitle>
+            <DialogDescription>
+              Modificá los datos del equipo.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(handleEdit)} className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <FormField
+                  control={editForm.control}
+                  name="ai"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Código AI</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ej. IMP-001" className="font-mono h-9 text-sm" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="modelo"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Modelo</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ej. HP LaserJet" className="h-9 text-sm" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={editForm.control}
+                name="estado"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Estado</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="h-9 text-sm">
+                          <SelectValue placeholder="Seleccione el estado" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="funciona">Funciona</SelectItem>
+                        <SelectItem value="parcial">Parcial</SelectItem>
+                        <SelectItem value="falla">Falla</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="ubicacion"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Ubicación (Opcional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ej. Oficina 302" className="h-9 text-sm" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="descripcion"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Descripción (Opcional)</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Detalles sobre el estado o falla..." className="resize-none h-16 text-sm" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => { setEditingPrinter(null); editForm.reset(); }}>
+                  Cancelar
+                </Button>
+                <Button type="submit" size="sm" disabled={updatePrinter.isPending}>
+                  {updatePrinter.isPending ? "Guardando..." : "Guardar cambios"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

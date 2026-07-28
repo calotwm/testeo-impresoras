@@ -427,6 +427,78 @@ export function useGetPrinterStats<TData = Awaited<ReturnType<typeof getPrinterS
 
 
 
+export const getUpdatePrinterUrl = (id: number,) => {
+
+
+
+
+  return `/api/printers/${id}`
+}
+
+/**
+ * @summary Update a printer test record
+ */
+export const updatePrinter = async (id: number,
+    printerInput: PrinterInput, options?: Parameters<typeof customFetch>[1]): Promise<Printer> => {
+
+  return customFetch<Printer>(getUpdatePrinterUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(printerInput)
+  }
+);}
+
+
+
+
+
+export const getUpdatePrinterMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePrinter>>, TError,{id: number;data: BodyType<PrinterInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updatePrinter>>, TError,{id: number;data: BodyType<PrinterInput>}, TContext> => {
+
+const mutationKey = ['updatePrinter'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updatePrinter>>, {id: number;data: BodyType<PrinterInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updatePrinter(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdatePrinterMutationResult = NonNullable<Awaited<ReturnType<typeof updatePrinter>>>
+    export type UpdatePrinterMutationBody = BodyType<PrinterInput>
+    export type UpdatePrinterMutationError = ErrorType<void>
+
+    /**
+ * @summary Update a printer test record
+ */
+export const useUpdatePrinter = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePrinter>>, TError,{id: number;data: BodyType<PrinterInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updatePrinter>>,
+        TError,
+        {id: number;data: BodyType<PrinterInput>},
+        TContext
+      > => {
+      return useMutation(getUpdatePrinterMutationOptions(options));
+    }
+
 export const getDeletePrinterUrl = (id: number,) => {
 
 
