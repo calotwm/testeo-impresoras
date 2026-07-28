@@ -17,7 +17,7 @@ router.get("/printers", async (_req, res): Promise<void> => {
     .select()
     .from(printersTable)
     .orderBy(desc(printersTable.createdAt));
-  res.json(ListPrintersResponse.parse(records));
+  res.json(ListPrintersResponse.parse(records.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() }))));
 });
 
 router.post("/printers", async (req, res): Promise<void> => {
@@ -43,7 +43,7 @@ router.post("/printers", async (req, res): Promise<void> => {
     .returning();
 
   broadcast({ type: "created", id: record.id });
-  res.status(201).json(CreatePrinterResponse.parse(record));
+  res.status(201).json(CreatePrinterResponse.parse({ ...record, createdAt: record.createdAt.toISOString() }));
 });
 
 router.delete("/printers/all", async (_req, res): Promise<void> => {
