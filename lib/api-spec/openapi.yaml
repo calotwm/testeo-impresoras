@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: printers
+    description: Printer test records
 paths:
   /healthz:
     get:
@@ -24,6 +26,76 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /printers:
+    get:
+      operationId: listPrinters
+      tags: [printers]
+      summary: List all printer test records
+      responses:
+        "200":
+          description: List of printer tests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Printer"
+    post:
+      operationId: createPrinter
+      tags: [printers]
+      summary: Create a new printer test record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrinterInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Printer"
+    delete:
+      operationId: deleteAllPrinters
+      tags: [printers]
+      summary: Delete all printer test records
+      responses:
+        "204":
+          description: All records deleted
+
+  /printers/stats:
+    get:
+      operationId: getPrinterStats
+      tags: [printers]
+      summary: Get stats grouped by estado
+      responses:
+        "200":
+          description: Printer stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrinterStats"
+
+  /printers/{id}:
+    delete:
+      operationId: deletePrinter
+      tags: [printers]
+      summary: Delete a printer test record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +106,55 @@ components:
       required:
         - status
 
+    Printer:
+      type: object
+      required: [id, ai, modelo, estado, fecha, createdAt]
+      properties:
+        id:
+          type: number
+        ai:
+          type: string
+        modelo:
+          type: string
+        estado:
+          type: string
+          enum: [funciona, falla, parcial]
+        ubicacion:
+          type: ["string", "null"]
+        descripcion:
+          type: ["string", "null"]
+        fecha:
+          type: string
+        createdAt:
+          type: string
+
+    PrinterInput:
+      type: object
+      required: [ai, modelo, estado]
+      properties:
+        ai:
+          type: string
+          minLength: 1
+        modelo:
+          type: string
+          minLength: 1
+        estado:
+          type: string
+          enum: [funciona, falla, parcial]
+        ubicacion:
+          type: string
+        descripcion:
+          type: string
+
+    PrinterStats:
+      type: object
+      required: [total, funciona, falla, parcial]
+      properties:
+        total:
+          type: number
+        funciona:
+          type: number
+        falla:
+          type: number
+        parcial:
+          type: number

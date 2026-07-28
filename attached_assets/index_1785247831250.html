@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Testeo de Impresoras</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f4f6f8; color: #1a1a2e; padding: 1rem; }
+  .container { max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin-bottom: 1rem; color: #16213e; display: flex; align-items: center; gap: .5rem; }
+  .card { background: #fff; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .card h2 { font-size: 1rem; margin-bottom: .75rem; color: #0f3460; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+  .form-group { display: flex; flex-direction: column; gap: .25rem; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: .85rem; font-weight: 600; color: #333; }
+  input, select, textarea { padding: .5rem .65rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: .9rem; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: #0f3460; box-shadow: 0 0 0 2px rgba(15,52,96,.15); }
+  textarea { resize: vertical; min-height: 60px; font-family: inherit; }
+  .btn { padding: .5rem 1rem; border: none; border-radius: 6px; font-size: .875rem; font-weight: 600; cursor: pointer; transition: opacity .15s; }
+  .btn:hover { opacity: .85; }
+  .btn-primary { background: #0f3460; color: #fff; }
+  .btn-danger { background: #e74c3c; color: #fff; }
+  .btn-outline { background: transparent; border: 1px solid #0f3460; color: #0f3460; }
+  .btn-sm { padding: .35rem .65rem; font-size: .8rem; }
+  .actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .75rem; }
+  .status-badge { display: inline-block; padding: .2rem .5rem; border-radius: 20px; font-size: .75rem; font-weight: 600; }
+  .status-funciona { background: #d4edda; color: #155724; }
+  .status-falla { background: #f8d7da; color: #721c24; }
+  .status-parcial { background: #fff3cd; color: #856404; }
+  table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+  th, td { padding: .6rem .5rem; text-align: left; border-bottom: 1px solid #e5e7eb; }
+  th { background: #f9fafb; font-weight: 600; color: #374151; position: sticky; top: 0; }
+  tr:hover td { background: #f3f4f6; }
+  .empty { text-align: center; padding: 2rem; color: #9ca3af; }
+  .empty p { margin-top: .25rem; font-size: .85rem; }
+  .count { font-size: .8rem; color: #6b7280; }
+  .actions-bar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem; margin-bottom: .75rem; }
+  .search-box { padding: .4rem .6rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: .85rem; width: 200px; }
+  .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #16213e; color: #fff; padding: .75rem 1.25rem; border-radius: 8px; font-size: .875rem; opacity: 0; transition: opacity .3s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🖨️ Testeo de Impresoras</h1>
+
+  <div class="card">
+    <h2>Nueva entrada</h2>
+    <form id="form">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="ai">AI (Activo Informático)</label>
+          <input type="text" id="ai" placeholder="Ej: AI-12345" required>
+        </div>
+        <div class="form-group">
+          <label for="modelo">Modelo</label>
+          <input type="text" id="modelo" placeholder="Ej: HP LaserJet M404" required>
+        </div>
+        <div class="form-group">
+          <label for="estado">Estado</label>
+          <select id="estado">
+            <option value="funciona">✅ Funciona</option>
+            <option value="falla">❌ Falla</option>
+            <option value="parcial">⚠️ Funciona parcialmente</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="ubicacion">Ubicación (opcional)</label>
+          <input type="text" id="ubicacion" placeholder="Ej: Oficina 3B">
+        </div>
+        <div class="form-group full">
+          <label for="descripcion">Descripción</label>
+          <textarea id="descripcion" placeholder="Describí el problema o el estado general de la impresora..."></textarea>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <button type="reset" class="btn btn-outline">Limpiar</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="actions-bar">
+      <h2 style="margin:0">Registros <span class="count" id="count">(0)</span></h2>
+      <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+        <input type="text" class="search-box" id="search" placeholder="Buscar…" />
+        <button class="btn btn-outline btn-sm" id="exportBtn">📥 Exportar CSV</button>
+        <button class="btn btn-danger btn-sm" id="clearBtn">🗑️ Limpiar todo</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>AI</th>
+            <th>Modelo</th>
+            <th>Estado</th>
+            <th>Ubicación</th>
+            <th>Descripción</th>
+            <th>Fecha</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="empty">
+      <p>Todavía no hay registros. Agregá el primero arriba 👆</p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'printer_tests';
+let data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+const form = document.getElementById('form');
+const tbody = document.getElementById('tbody');
+const empty = document.getElementById('empty');
+const count = document.getElementById('count');
+const search = document.getElementById('search');
+const toast = document.getElementById('toast');
+
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+function render() {
+  const q = search.value.toLowerCase();
+  const filtered = data.filter(r =>
+    r.ai.toLowerCase().includes(q) ||
+    r.modelo.toLowerCase().includes(q) ||
+    r.descripcion.toLowerCase().includes(q) ||
+    r.ubicacion.toLowerCase().includes(q)
+  );
+  count.textContent = `(${data.length})`;
+  empty.style.display = filtered.length ? 'none' : 'block';
+  tbody.innerHTML = filtered.map((r, i) =>
+    `<tr>
+      <td><strong>${esc(r.ai)}</strong></td>
+      <td>${esc(r.modelo)}</td>
+      <td><span class="status-badge status-${r.estado}">${estadoLabel(r.estado)}</span></td>
+      <td>${esc(r.ubicacion || '-')}</td>
+      <td>${esc(r.descripcion || '-')}</td>
+      <td style="white-space:nowrap;font-size:.8rem;color:#6b7280">${r.fecha}</td>
+      <td><button class="btn btn-sm btn-danger" onclick="eliminar(${r._idx})">✕</button></td>
+    </tr>`
+  ).join('');
+  // re-index for delete
+  data.forEach((r, i) => r._idx = i);
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function estadoLabel(e) {
+  return e === 'funciona' ? '✅ Funciona' : e === 'falla' ? '❌ Falla' : '⚠️ Parcial';
+}
+
+form.addEventListener('submit', e => {
+  e.preventDefault();
+  const ai = document.getElementById('ai').value.trim();
+  const modelo = document.getElementById('modelo').value.trim();
+  const estado = document.getElementById('estado').value;
+  const ubicacion = document.getElementById('ubicacion').value.trim();
+  const descripcion = document.getElementById('descripcion').value.trim();
+  if (!ai || !modelo) { showToast('Completá AI y Modelo'); return; }
+  const now = new Date();
+  const fecha = now.toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' }) + ' ' +
+                now.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' });
+  data.push({ ai, modelo, estado, ubicacion, descripcion, fecha, _idx: data.length });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  form.reset();
+  render();
+  showToast('Guardado ✅');
+});
+
+function eliminar(idx) {
+  if (!confirm('¿Eliminar este registro?')) return;
+  data.splice(idx, 1);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  render();
+  showToast('Eliminado');
+}
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  if (!confirm('¿Eliminar TODOS los registros?')) return;
+  data = [];
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  render();
+  showToast('Todo eliminado');
+});
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  if (!data.length) { showToast('No hay datos para exportar'); return; }
+  const header = 'AI,Modelo,Estado,Ubicación,Descripción,Fecha';
+  const rows = data.map(r =>
+    `"${r.ai}","${r.modelo}","${estadoLabel(r.estado)}","${r.ubicacion || ''}","${(r.descripcion||'').replace(/"/g,'""')}","${r.fecha}"`
+  ).join('\n');
+  const blob = new Blob(['\uFEFF' + header + '\n' + rows], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'impresoras-testeo.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('CSV descargado 📥');
+});
+
+search.addEventListener('input', render);
+
+render();
+</script>
+</body>
+</html>

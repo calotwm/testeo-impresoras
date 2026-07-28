@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "Testeo de Impresoras"
+version = "1.0.0"
+id = "artifacts/impresoras"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21927
+
+[services.development]
+run = "pnpm --filter @workspace/impresoras run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/impresoras", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/impresoras/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21927"
+BASE_PATH = "/"
