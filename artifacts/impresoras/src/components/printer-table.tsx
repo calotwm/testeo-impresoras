@@ -1,13 +1,12 @@
 import { useState, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import * as XLSX from "xlsx";
 import {
   useListPrinters,
   useDeletePrinter,
-  useDeleteAllPrinters,
   useUpdatePrinter,
   getListPrintersQueryKey,
-  getGetPrinterStatsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
@@ -29,28 +28,26 @@ import { printerFormSchema, type PrinterFormValues } from "@/lib/schemas";
 import {
   Search,
   Download,
-  Trash2,
-  ShieldAlert,
+  FileSpreadsheet,
   MapPin,
   FileText,
   Calendar,
   Printer,
   Pencil,
+  Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+
+function estadoLabel(estado: string): string {
+  switch (estado) {
+    case "funciona": return "Funciona";
+    case "parcial":  return "Parcial";
+    case "falla":    return "Falla";
+    default:         return estado;
+  }
+}
 
 function EstadoBadge({ estado }: { estado: string }) {
   switch (estado) {
@@ -94,18 +91,21 @@ export function PrinterTable() {
 
   const { data: printers, isLoading } = useListPrinters();
   const deletePrinter = useDeletePrinter();
-  const deleteAllPrinters = useDeleteAllPrinters();
   const updatePrinter = useUpdatePrinter();
 
   const deleteFnRef = useRef(deletePrinter.mutate);
   deleteFnRef.current = deletePrinter.mutate;
-  const deleteAllFnRef = useRef(deleteAllPrinters.mutate);
-  deleteAllFnRef.current = deleteAllPrinters.mutate;
 
   const editForm = useForm<PrinterFormValues>({
     resolver: zodResolver(printerFormSchema),
     values: editingPrinter
-      ? { ai: editingPrinter.ai, modelo: editingPrinter.modelo, estado: editingPrinter.estado, ubicacion: editingPrinter.ubicacion ?? "", descripcion: editingPrinter.descripcion ?? "" }
+      ? {
+          ai: editingPrinter.ai,
+          modelo: editingPrinter.modelo,
+          estado: editingPrinter.estado,
+          ubicacion: editingPrinter.ubicacion ?? "",
+          descripcion: editingPrinter.descripcion ?? "",
+        }
       : undefined,
   });
 
@@ -118,26 +118,20 @@ export function PrinterTable() {
         p.ai.toLowerCase().includes(q) ||
         p.modelo.toLowerCase().includes(q) ||
         (p.ubicacion && p.ubicacion.toLowerCase().includes(q)) ||
-        (p.descripcion && p.descripcion.toLowerCase().includes(q))
+        (p.descripcion && p.descripcion.toLowerCase().includes(q)),
     );
   }, [printers, search]);
 
   const handleDelete = (id: number) => {
-    deleteFnRef.current({ id }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListPrintersQueryKey() });
-        toast({ title: "Registro eliminado" });
+    deleteFnRef.current(
+      { id },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListPrintersQueryKey() });
+          toast({ title: "Registro eliminado" });
+        },
       },
-    });
-  };
-
-  const handleDeleteAll = () => {
-    deleteAllFnRef.current(undefined, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListPrintersQueryKey() });
-        toast({ title: "Bitácora limpiada", description: "Todos los registros eliminados." });
-      },
-    });
+    );
   };
 
   const handleEdit = (data: PrinterFormValues) => {
@@ -172,20 +166,62 @@ export function PrinterTable() {
     });
   };
 
-  const exportCSV = () => {
+  const exportXLSX = () => {
     if (!filteredPrinters.length) return;
-    const headers = ["ID", "AI", "Modelo", "Estado", "Ubicación", "Descripción", "Fecha"];
-    const rows = filteredPrinters.map((p) => [
-      p.id, p.ai, p.modelo, p.estado,
-      `"${p.ubicacion || ""}"`,
-      `"${(p.descripcion || "").replace(/"/g, '""')}"`,
-      format(new Date(p.createdAt), "dd/MM/yyyy HH:mm"),
-    ]);
-    const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+
+    // Build data rows for the main sheet
+    const data = filteredPrinters.map((p) => ({
+      ID: p.id,
+      AI: p.ai,
+      Modelo: p.modelo,
+      Estado: estadoLabel(p.estado),
+      Ubicación: p.ubicacion ?? "",
+      Descripción: p.descripcion ?? "",
+      Fecha: format(new Date(p.createdAt), "dd/MM/yyyy HH:mm"),
+    }));
+
+    // Count by estado for a summary table
+    const counts: Record<string, number> = {};
+    for (const p of filteredPrinters) {
+      const label = estadoLabel(p.estado);
+      counts[label] = (counts[label] || 0) + 1;
+    }
+    const summary = Object.entries(counts).map(([Estado, Cantidad]) => ({
+      Estado,
+      Cantidad,
+    }));
+    summary.push({ Estado: "Total", Cantidad: filteredPrinters.length });
+
+    // Create workbook with two sheets
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: Detailed log
+    const ws1 = XLSX.utils.json_to_sheet(data);
+    XLSX.utils.sheet_add_aoa(ws1, [["ID", "AI", "Modelo", "Estado", "Ubicación", "Descripción", "Fecha"]], { origin: "A1" });
+    // Auto-fit column widths
+    const colWidths = [
+      { wch: 6 },  // ID
+      { wch: 14 }, // AI
+      { wch: 24 }, // Modelo
+      { wch: 14 }, // Estado
+      { wch: 24 }, // Ubicación
+      { wch: 36 }, // Descripción
+      { wch: 18 }, // Fecha
+    ];
+    ws1["!cols"] = colWidths;
+    XLSX.utils.book_append_sheet(wb, ws1, "Bitácora");
+
+    // Sheet 2: Summary counts
+    const ws2 = XLSX.utils.json_to_sheet(summary);
+    ws2["!cols"] = [{ wch: 14 }, { wch: 12 }];
+    XLSX.utils.book_append_sheet(wb, ws2, "Resumen");
+
+    // Generate and download
+    const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `bitacora_impresoras_${format(new Date(), "yyyyMMdd_HHmm")}.csv`;
+    a.download = `bitacora_impresoras_${format(new Date(), "yyyyMMdd_HHmm")}.xlsx`;
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -205,49 +241,16 @@ export function PrinterTable() {
           <div className="flex items-center gap-1.5 shrink-0">
             <Button
               variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={exportCSV}
+              size="sm"
+              className="h-8 gap-1.5 text-xs"
+              onClick={exportXLSX}
               disabled={!filteredPrinters.length}
-              title="Exportar CSV"
-              data-testid="button-export-csv"
+              title="Descargar XLSX"
+              data-testid="button-export-xlsx"
             >
-              <Download className="h-4 w-4" />
+              <FileSpreadsheet className="h-4 w-4" />
+              <span className="hidden sm:inline">XLSX</span>
             </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  className="h-8 w-8"
-                  disabled={!printers?.length}
-                  title="Limpiar bitácora"
-                  data-testid="button-clear-all"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent className="max-w-sm mx-4">
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="flex items-center gap-2">
-                    <ShieldAlert className="h-5 w-5 text-destructive" />
-                    ¿Limpiar todos los registros?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Esta acción eliminará todos los registros de forma permanente.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    onClick={handleDeleteAll}
-                  >
-                    Sí, limpiar
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
           </div>
         </div>
 
@@ -354,13 +357,19 @@ export function PrinterTable() {
       </CardContent>
 
       {/* Edit Dialog */}
-      <Dialog open={!!editingPrinter} onOpenChange={(o) => { if (!o) { setEditingPrinter(null); editForm.reset(); } }}>
+      <Dialog
+        open={!!editingPrinter}
+        onOpenChange={(o) => {
+          if (!o) {
+            setEditingPrinter(null);
+            editForm.reset();
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Editar Registro</DialogTitle>
-            <DialogDescription>
-              Modificá los datos del equipo.
-            </DialogDescription>
+            <DialogDescription>Modificá los datos del equipo.</DialogDescription>
           </DialogHeader>
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit(handleEdit)} className="space-y-3">
@@ -445,7 +454,15 @@ export function PrinterTable() {
               />
 
               <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => { setEditingPrinter(null); editForm.reset(); }}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setEditingPrinter(null);
+                    editForm.reset();
+                  }}
+                >
                   Cancelar
                 </Button>
                 <Button type="submit" size="sm" disabled={updatePrinter.isPending}>
