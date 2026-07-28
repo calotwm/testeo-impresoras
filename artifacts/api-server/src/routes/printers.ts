@@ -1,23 +1,34 @@
 import { Router, type IRouter } from "express";
-import { desc, eq, count, sql } from "drizzle-orm";
+import { desc, eq, count } from "drizzle-orm";
 import { db, printersTable } from "@workspace/db";
 import {
   CreatePrinterBody,
-  DeletePrinterParams,
   ListPrintersResponse,
   CreatePrinterResponse,
   GetPrinterStatsResponse,
+  DeletePrinterParams,
 } from "@workspace/api-zod";
 import { broadcast } from "../lib/ws";
 
 const router: IRouter = Router();
+
+/** Serialize a record for JSON — createdAt comes from Drizzle as Date */
+function serialize(r: Record<string, unknown>) {
+  return {
+    ...r,
+    createdAt:
+      r.createdAt instanceof Date
+        ? r.createdAt.toISOString()
+        : r.createdAt,
+  };
+}
 
 router.get("/printers", async (_req, res): Promise<void> => {
   const records = await db
     .select()
     .from(printersTable)
     .orderBy(desc(printersTable.createdAt));
-  res.json(ListPrintersResponse.parse(records.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() }))));
+  res.json(ListPrintersResponse.parse(records.map(serialize)));
 });
 
 router.post("/printers", async (req, res): Promise<void> => {
@@ -43,7 +54,7 @@ router.post("/printers", async (req, res): Promise<void> => {
     .returning();
 
   broadcast({ type: "created", id: record.id });
-  res.status(201).json(CreatePrinterResponse.parse({ ...record, createdAt: record.createdAt.toISOString() }));
+  res.status(201).json(CreatePrinterResponse.parse(serialize(record)));
 });
 
 router.delete("/printers/all", async (_req, res): Promise<void> => {
