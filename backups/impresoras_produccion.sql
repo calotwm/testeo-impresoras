@@ -1,8 +1,12 @@
 -- ============================================================
 -- Respaldo de base de datos: Testeo de Impresoras
--- Generado: 2026-08-04T18:37:07Z (UTC)
--- Entorno: PRODUCCION (Replit)  |  Tabla: public.printers
--- Registros: 57
+-- Generado: 2026-08-04T18:37:07Z (UTC)  |  Reparado: 2026-08-04 (deploy Railway)
+-- Entorno: PRODUCCION  |  Tabla: public.printers
+-- Registros: 52
+-- NOTA: version reparada. El export original (CSV) tenia 5 filas corruptas
+-- (ids 20, 21, 39, 41, 43) con fecha/created_at partidas en la columna id;
+-- los datos se fusionaron de vuelta en cada registro. Contenido identico
+-- al importado en produccion (Railway, PostgreSQL).
 -- ============================================================
 
 BEGIN;
@@ -32,10 +36,8 @@ INSERT INTO "printers" ("id", "ai", "modelo", "estado", "ubicacion", "descripcio
 ('17', '001699', 'Officejet 200 mobile', 'funciona', 'Deposito de Activos', '', '28/07/2026 02:49 p. m.', '2026-07-28 14:49:40.991266+00'),
 ('18', '001496', 'HP M401 dne', 'funciona', 'Pasillo Oficina', '', '28/07/2026 02:51 p. m.', '2026-07-28 14:51:31.858241+00'),
 ('19', '000386', 'Hp laserjet 1022', 'funciona', 'Deposito PB', '', '30/07/2026 02:22 p. m.', '2026-07-30 14:22:19.103549+00'),
-('20', '000930', 'HP Laserjet pro 400 m401 dne', 'falla', 'Deposito PB', 'falla fusor', NULL, NULL),
-(',30/07/2026 02:24 p. m.,2026-07-30 14:24:22.014041+00', NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-('21', '001194', 'Color LaserJet CP3525n', 'falla', 'Deposito PB', 'falla unidad de transferencia', NULL, NULL),
-(',30/07/2026 02:28 p. m.,2026-07-30 14:28:30.728585+00', NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+('20', '000930', 'HP Laserjet pro 400 m401 dne', 'falla', 'Deposito PB', 'falla fusor', '30/07/2026 02:24 p. m.', '2026-07-30 14:24:22.014041+00'),
+('21', '001194', 'Color LaserJet CP3525n', 'falla', 'Deposito PB', 'falla unidad de transferencia', '30/07/2026 02:28 p. m.', '2026-07-30 14:28:30.728585+00'),
 ('22', '001168', 'OfficeJet PRO 8100', 'falla', 'Deposito de abajo', 'no toma bien cartuchos', '30/07/2026 02:32 p. m.', '2026-07-30 14:32:11.969443+00'),
 ('23', '001062', 'Color laserjet cp2025', 'funciona', 'Deposito PB', 'A color funciona impecable', '30/07/2026 02:35 p. m.', '2026-07-30 14:35:21.743543+00'),
 ('24', '001302', 'OfficeJet PRO 8100', 'falla', '', 'No toma hojas', '30/07/2026 02:43 p. m.', '2026-07-30 14:43:32.713345+00'),
@@ -53,14 +55,11 @@ INSERT INTO "printers" ("id", "ai", "modelo", "estado", "ubicacion", "descripcio
 ('36', '001357', 'OfficeJet 4000', 'funciona', 'Deposito PB', 'Para donacion', '30/07/2026 07:07 p. m.', '2026-07-30 19:07:07.224806+00'),
 ('37', '001385', 'OfficeJet 4000', 'funciona', 'Deposito PB', 'Para donacion', '30/07/2026 07:10 p. m.', '2026-07-30 19:10:19.359061+00'),
 ('38', '000167', 'HP OfficeJet PRO 8100', 'falla', 'Deposito PB', 'No imprime', '03/08/2026 04:05 p. m.', '2026-08-03 16:05:32.674181+00'),
-('39', '001414', 'hp officejet 8100', 'funciona', 'Deposito PB', 'donacion', NULL, NULL),
-(',03/08/2026 04:25 p. m.,2026-08-03 16:25:19.137445+00', NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+('39', '001414', 'hp officejet 8100', 'funciona', 'Deposito PB', 'donacion', '03/08/2026 04:25 p. m.', '2026-08-03 16:25:19.137445+00'),
 ('40', '001634', 'HP LaserJet P2035n', 'funciona', 'Deposito PB', 'donacion', '03/08/2026 04:33 p. m.', '2026-08-03 16:33:26.018+00'),
-('41', '001704', 'HP Color LaserJet Pro MFP M176n', 'funciona', 'Deposito PB', '10 puntos donacion', NULL, NULL),
-(',03/08/2026 04:47 p. m.,2026-08-03 16:47:10.25426+00', NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+('41', '001704', 'HP Color LaserJet Pro MFP M176n', 'funciona', 'Deposito PB', '10 puntos donacion', '03/08/2026 04:47 p. m.', '2026-08-03 16:47:10.25426+00'),
 ('42', '000023', 'HP Laserjet Pro 400 MFP m425dn', 'falla', 'Deposito PB', 'Traba hojas y el adr no funciona', '03/08/2026 05:02 p. m.', '2026-08-03 17:02:11.111398+00'),
-('43', '001634', 'HP LaserJet P2035n', 'funciona', 'Deposito PB', 'Hace ruido pero imprime bien', NULL, NULL),
-('donacion,03/08/2026 07:57 p. m.,2026-08-03 19:57:01.203909+00', NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+('43', '001634', 'HP LaserJet P2035n', 'funciona', 'Deposito PB', 'Hace ruido pero imprime bien, donacion', '03/08/2026 07:57 p. m.', '2026-08-03 19:57:01.203909+00'),
 ('44', '000905', 'HP Deskjet 6940', 'falla', 'Deposito PB', 'No prende', '04/08/2026 01:00 p. m.', '2026-08-04 13:00:31.537676+00'),
 ('45', '001241', 'hp Deskjet 6940', 'funciona', 'Deposito PB', '', '04/08/2026 01:03 p. m.', '2026-08-04 13:03:49.863674+00'),
 ('46', '001494', 'hp officejet 8100', 'falla', 'Deposito PB', 'no imprime', '04/08/2026 01:33 p. m.', '2026-08-04 13:33:35.263999+00'),
